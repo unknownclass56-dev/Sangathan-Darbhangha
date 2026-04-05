@@ -11,6 +11,9 @@ import StatsSection from "@/components/StatsSection";
 import GallerySection from "@/components/GallerySection";
 import FeaturedEventsSection from "@/components/FeaturedEventsSection";
 import DonationSection from "@/components/DonationSection";
+import FounderSection from "@/components/FounderSection";
+import BiharDistricts from "@/components/BiharDistricts";
+import MissionSection from "@/components/MissionSection";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -61,6 +64,9 @@ const Index = () => {
       <GallerySection />
       <FeaturedEventsSection />
       <DonationSection />
+      <MissionSection />
+      <FounderSection />
+      <BiharDistricts />
       <Footer />
     </div>
   );
