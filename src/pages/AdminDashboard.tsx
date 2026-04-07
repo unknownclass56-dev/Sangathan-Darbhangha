@@ -15,8 +15,6 @@ type UpcomingEvent = Database["public"]["Tables"]["upcoming_events"]["Row"];
 type Plan = Database["public"]["Tables"]["plans"]["Row"];
 type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 type FeaturedEvent = Database["public"]["Tables"]["featured_events"]["Row"];
-type DonationRequest = Database["public"]["Tables"]["donation_requests"]["Row"];
-
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -30,13 +28,51 @@ const AdminDashboard = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
   const [featured, setFeatured] = useState<FeaturedEvent[]>([]);
-  const [donationRequests, setDonationRequests] = useState<DonationRequest[]>([]);
   const [donationSettings, setDonationSettings] = useState<{ id: string; qr_image_url: string; amounts: string[]; upi_id: string }>({ id: "", qr_image_url: "", amounts: ["100","500","1000","5000"], upi_id: "" });
-
   const [siteSettings, setSiteSettings] = useState<Record<string, { id: string; value: string }>>({});
 
   const loadAll = useCallback(async () => {
-    const [s, t, e, p, g, f, d, ss, dr] = await Promise.all([
+<<<<<<< HEAD
+    try {
+      const [s, t, e, p, g, f, d, ss, dr] = await Promise.all([
+        supabase.from("slider_images").select("*").order("display_order"),
+        supabase.from("team_members").select("*").order("display_order"),
+        supabase.from("upcoming_events").select("*").order("event_date"),
+        supabase.from("plans").select("*"),
+        supabase.from("gallery_images").select("*").order("display_order"),
+        supabase.from("featured_events").select("*").order("event_date"),
+        supabase.from("donation_settings").select("*").limit(1).single(),
+        supabase.from("site_settings").select("*"),
+        supabase.from("donation_requests").select("*").order("created_at", { ascending: false }),
+      ]);
+
+      if (dr.error) {
+        console.error("Donation Requests Error:", dr.error);
+        toast({ title: "Donation Data Error", description: dr.error.message, variant: "destructive" });
+      }
+
+      setSliders(s.data || []);
+      setTeam(t.data || []);
+      setEvents(e.data || []);
+      setPlans(p.data || []);
+      setGallery(g.data || []);
+      setFeatured(f.data || []);
+      setDonationRequests(dr.data || []);
+      if (d.data) setDonationSettings({ id: d.data.id, qr_image_url: d.data.qr_image_url || "", amounts: d.data.amounts || ["100","500","1000","5000"], upi_id: d.data.upi_id || "" });
+
+      const settingsMap: Record<string, { id: string; value: string }> = {};
+      ss.data?.forEach((s) => { settingsMap[s.setting_key] = { id: s.id, value: s.setting_value || "" }; });
+      setSiteSettings(settingsMap);
+    } catch (err: any) {
+      console.error("LoadAll Error:", err);
+      toast({ title: "Error Loading Dashboard", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+=======
+    const [s, t, e, p, g, f, d, ss] = await Promise.all([
       supabase.from("slider_images").select("*").order("display_order"),
       supabase.from("team_members").select("*").order("display_order"),
       supabase.from("upcoming_events").select("*").order("event_date"),
@@ -45,23 +81,20 @@ const AdminDashboard = () => {
       supabase.from("featured_events").select("*").order("event_date"),
       supabase.from("donation_settings").select("*").limit(1).single(),
       supabase.from("site_settings").select("*"),
-      supabase.from("donation_requests").select("*").order("created_at", { ascending: false }),
     ]);
-
     setSliders(s.data || []);
     setTeam(t.data || []);
     setEvents(e.data || []);
     setPlans(p.data || []);
     setGallery(g.data || []);
     setFeatured(f.data || []);
-    setDonationRequests(dr.data || []);
     if (d.data) setDonationSettings({ id: d.data.id, qr_image_url: d.data.qr_image_url || "", amounts: d.data.amounts || ["100","500","1000","5000"], upi_id: d.data.upi_id || "" });
-
     const settingsMap: Record<string, { id: string; value: string }> = {};
     ss.data?.forEach((s) => { settingsMap[s.setting_key] = { id: s.id, value: s.setting_value || "" }; });
     setSiteSettings(settingsMap);
     setLoading(false);
   }, []);
+>>>>>>> parent of 5ebbe25 (final)
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -141,10 +174,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="plans">योजना</TabsTrigger>
             <TabsTrigger value="gallery">गैलरी</TabsTrigger>
             <TabsTrigger value="featured">आगामी</TabsTrigger>
-            <TabsTrigger value="donation">दान सेटिंग</TabsTrigger>
-            <TabsTrigger value="requests">दान अनुरोध</TabsTrigger>
+            <TabsTrigger value="donation">दान</TabsTrigger>
             <TabsTrigger value="settings">सेटिंग्स</TabsTrigger>
-
           </TabsList>
 
           {/* SLIDERS */}
@@ -287,6 +318,7 @@ const AdminDashboard = () => {
             />
           </TabsContent>
 
+          {/* DONATION SETTINGS */}
           <TabsContent value="donation">
             <div className="bg-card p-6 rounded-lg border border-border">
               <h3 className="text-xl font-bold font-hindi text-primary mb-4">दान सेटिंग्स</h3>
@@ -328,6 +360,7 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
+<<<<<<< HEAD
           {/* DONATION REQUESTS */}
           <TabsContent value="requests">
             <div className="bg-card p-6 rounded-lg border border-border">
@@ -346,7 +379,10 @@ const AdminDashboard = () => {
                   <tbody>
                     {donationRequests.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-muted-foreground">कोई अनुरोध नहीं मिला</td>
+                        <td colSpan={5} className="p-4 text-center">
+                          <p className="text-muted-foreground">कोई अनुरोध नहीं मिला</p>
+                          <p className="text-[10px] text-muted-foreground/50 mt-1">If you expect data here, please ensure your account has the 'admin' or 'super_admin' role assigned.</p>
+                        </td>
                       </tr>
                     ) : (
                       donationRequests.map((req) => (
@@ -380,6 +416,8 @@ const AdminDashboard = () => {
           </TabsContent>
 
 
+=======
+>>>>>>> parent of 5ebbe25 (final)
           {/* SITE SETTINGS */}
           <TabsContent value="settings">
             <div className="bg-card p-6 rounded-lg border border-border">

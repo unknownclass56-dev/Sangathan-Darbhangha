@@ -167,6 +167,13 @@ const SuperAdmin = () => {
           id: signUpData.user.id,
           first_name: newAdminName,
         });
+
+        // Assign 'admin' role in user_roles table
+        await (supabase as any).from('user_roles').insert({
+          user_id: signUpData.user.id,
+          role: 'admin'
+        });
+
         toast({ title: "Success!", description: `Admin '${newAdminEmail}' created successfully.` });
         setNewAdminEmail("");
         setNewAdminPassword("");
