@@ -15,6 +15,8 @@ type UpcomingEvent = Database["public"]["Tables"]["upcoming_events"]["Row"];
 type Plan = Database["public"]["Tables"]["plans"]["Row"];
 type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 type FeaturedEvent = Database["public"]["Tables"]["featured_events"]["Row"];
+type DonationRequest = Database["public"]["Tables"]["donation_requests"]["Row"];
+
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -28,11 +30,13 @@ const AdminDashboard = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
   const [featured, setFeatured] = useState<FeaturedEvent[]>([]);
+  const [donationRequests, setDonationRequests] = useState<DonationRequest[]>([]);
   const [donationSettings, setDonationSettings] = useState<{ id: string; qr_image_url: string; amounts: string[]; upi_id: string }>({ id: "", qr_image_url: "", amounts: ["100","500","1000","5000"], upi_id: "" });
+
   const [siteSettings, setSiteSettings] = useState<Record<string, { id: string; value: string }>>({});
 
   const loadAll = useCallback(async () => {
-    const [s, t, e, p, g, f, d, ss] = await Promise.all([
+    const [s, t, e, p, g, f, d, ss, dr] = await Promise.all([
       supabase.from("slider_images").select("*").order("display_order"),
       supabase.from("team_members").select("*").order("display_order"),
       supabase.from("upcoming_events").select("*").order("event_date"),
@@ -41,14 +45,18 @@ const AdminDashboard = () => {
       supabase.from("featured_events").select("*").order("event_date"),
       supabase.from("donation_settings").select("*").limit(1).single(),
       supabase.from("site_settings").select("*"),
+      supabase.from("donation_requests").select("*").order("created_at", { ascending: false }),
     ]);
+
     setSliders(s.data || []);
     setTeam(t.data || []);
     setEvents(e.data || []);
     setPlans(p.data || []);
     setGallery(g.data || []);
     setFeatured(f.data || []);
+    setDonationRequests(dr.data || []);
     if (d.data) setDonationSettings({ id: d.data.id, qr_image_url: d.data.qr_image_url || "", amounts: d.data.amounts || ["100","500","1000","5000"], upi_id: d.data.upi_id || "" });
+
     const settingsMap: Record<string, { id: string; value: string }> = {};
     ss.data?.forEach((s) => { settingsMap[s.setting_key] = { id: s.id, value: s.setting_value || "" }; });
     setSiteSettings(settingsMap);
@@ -133,8 +141,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="plans">योजना</TabsTrigger>
             <TabsTrigger value="gallery">गैलरी</TabsTrigger>
             <TabsTrigger value="featured">आगामी</TabsTrigger>
-            <TabsTrigger value="donation">दान</TabsTrigger>
+            <TabsTrigger value="donation">दान सेटिंग</TabsTrigger>
+            <TabsTrigger value="requests">दान अनुरोध</TabsTrigger>
             <TabsTrigger value="settings">सेटिंग्स</TabsTrigger>
+
           </TabsList>
 
           {/* SLIDERS */}
@@ -277,7 +287,6 @@ const AdminDashboard = () => {
             />
           </TabsContent>
 
-          {/* DONATION SETTINGS */}
           <TabsContent value="donation">
             <div className="bg-card p-6 rounded-lg border border-border">
               <h3 className="text-xl font-bold font-hindi text-primary mb-4">दान सेटिंग्स</h3>
@@ -318,6 +327,58 @@ const AdminDashboard = () => {
               </div>
             </div>
           </TabsContent>
+
+          {/* DONATION REQUESTS */}
+          <TabsContent value="requests">
+            <div className="bg-card p-6 rounded-lg border border-border">
+              <h3 className="text-xl font-bold font-hindi text-primary mb-4">दान के लिए अनुरोध (Donation Requests)</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="p-3 text-sm font-semibold">नाम</th>
+                      <th className="p-3 text-sm font-semibold">संपर्क (Email/Phone)</th>
+                      <th className="p-3 text-sm font-semibold">राशि</th>
+                      <th className="p-3 text-sm font-semibold">दिनांक</th>
+                      <th className="p-3 text-sm font-semibold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {donationRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-muted-foreground">कोई अनुरोध नहीं मिला</td>
+                      </tr>
+                    ) : (
+                      donationRequests.map((req) => (
+                        <tr key={req.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                          <td className="p-3">{req.name}</td>
+                          <td className="p-3">
+                            <div className="text-sm">{req.email || "-"}</div>
+                            <div className="text-xs text-muted-foreground">{req.phone || "-"}</div>
+                          </td>
+                          <td className="p-3 font-semibold text-primary">₹{req.amount}</td>
+                          <td className="p-3 text-sm text-muted-foreground">
+                            {req.created_at ? new Date(req.created_at).toLocaleDateString('hi-IN') : "-"}
+                          </td>
+                          <td className="p-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteItem("donation_requests", req.id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
 
           {/* SITE SETTINGS */}
           <TabsContent value="settings">
