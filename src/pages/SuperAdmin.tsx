@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldAlert, Trash2, Settings, ArrowRight, UserPlus, X } from "lucide-react";
+import { ShieldAlert, Trash2, Settings, ArrowRight, UserPlus, X, Globe, Lock, Layout } from "lucide-react";
 
 const SUPER_ADMIN_EMAIL = "superadmin@gmail.com";
 
@@ -24,6 +24,13 @@ const SuperAdmin = () => {
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [newAdminName, setNewAdminName] = useState("");
   const [addingAdmin, setAddingAdmin] = useState(false);
+  
+  // Block Mode Settings
+  const [blockMode, setBlockMode] = useState(false);
+  const [blockTitle, setBlockTitle] = useState("");
+  const [blockMessage, setBlockMessage] = useState("");
+  const [showBlockConfig, setShowBlockConfig] = useState(false);
+  const [savingBlock, setSavingBlock] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -74,6 +81,21 @@ const SuperAdmin = () => {
       setMaintenanceMode(settings.setting_value === "true");
       setMaintenanceId(settings.id);
     }
+
+    // Load Block Settings
+    const { data: allSettings } = await (supabase as any)
+      .from('site_settings')
+      .select('*');
+
+    if (allSettings) {
+      const blockE = allSettings.find((s: any) => s.setting_key === 'block_mode');
+      const blockT = allSettings.find((s: any) => s.setting_key === 'block_title');
+      const blockM = allSettings.find((s: any) => s.setting_key === 'block_message');
+
+      if (blockE) setBlockMode(blockE.setting_value === "true");
+      if (blockT) setBlockTitle(blockT.setting_value || "");
+      if (blockM) setBlockMessage(blockM.setting_value || "");
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -112,24 +134,58 @@ const SuperAdmin = () => {
     const newValue = !maintenanceMode;
     const valueStr = newValue ? "true" : "false";
     
-    if (maintenanceId) {
+    const { error } = await (supabase as any)
+      .from('site_settings')
+      .upsert({ 
+        setting_key: 'maintenance_mode', 
+        setting_value: valueStr 
+      }, { onConflict: 'setting_key' });
+      
+    if (!error) {
+      setMaintenanceMode(newValue);
+      toast({ title: "Settings Updated", description: `Maintenance Mode is now ${newValue ? "ON" : "OFF"}` });
+    } else {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const saveBlockSettings = async () => {
+    setSavingBlock(true);
+    try {
+      const settings = [
+        { setting_key: 'block_mode', setting_value: blockMode ? "true" : "false" },
+        { setting_key: 'block_title', setting_value: blockTitle },
+        { setting_key: 'block_message', setting_value: blockMessage }
+      ];
+
       const { error } = await (supabase as any)
         .from('site_settings')
-        .update({ setting_value: valueStr })
-        .eq('id', maintenanceId);
-      if (!error) setMaintenanceMode(newValue);
-    } else {
-      const { error, data } = await (supabase as any)
-        .from('site_settings')
-        .insert({ setting_key: 'maintenance_mode', setting_value: valueStr })
-        .select()
-        .single();
-      if (!error && data) {
-        setMaintenanceId(data.id);
-        setMaintenanceMode(newValue);
-      }
+        .upsert(settings, { onConflict: 'setting_key' });
+
+      if (error) throw error;
+      
+      toast({ title: "Success", description: "Block settings saved successfully." });
+      setShowBlockConfig(false);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingBlock(false);
     }
-    toast({ title: "Settings Updated", description: `Maintenance Mode is now ${newValue ? "ON" : "OFF"}` });
+  };
+
+  const toggleBlockMode = async () => {
+    const newValue = !blockMode;
+    const { error } = await (supabase as any)
+      .from('site_settings')
+      .upsert({ 
+        setting_key: 'block_mode', 
+        setting_value: newValue ? "true" : "false" 
+      }, { onConflict: 'setting_key' });
+
+    if (!error) {
+      setBlockMode(newValue);
+      toast({ title: "Settings Updated", description: `Block Mode is now ${newValue ? "ON" : "OFF"}` });
+    }
   };
 
   const deleteAdminProfile = async (id: string) => {
@@ -217,6 +273,9 @@ const SuperAdmin = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.open("/", "_blank")} className="border-green-500/50 text-green-400 hover:bg-green-500/10">
+              <Globe className="w-4 h-4 mr-2" /> View Site
+            </Button>
             <Button variant="outline" onClick={() => navigate("/admin/dashboard")} className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10">
               <ArrowRight className="w-4 h-4 mr-2" /> Admin Panel
             </Button>
@@ -235,9 +294,13 @@ const SuperAdmin = () => {
             </div>
             
             <div className="space-y-4">
+              {/* Maintenance Mode */}
               <div className="p-4 bg-black rounded-lg border border-gray-800 flex justify-between items-center">
                 <div>
-                  <h3 className="font-medium text-white">Maintenance Mode</h3>
+                  <h3 className="font-medium text-white flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-gray-500" />
+                    Server Maintenance
+                  </h3>
                   <p className="text-sm text-gray-500">Takes public site offline entirely.</p>
                 </div>
                 <Button 
@@ -245,8 +308,71 @@ const SuperAdmin = () => {
                   variant={maintenanceMode ? "destructive" : "default"}
                   className={!maintenanceMode ? "bg-green-600 hover:bg-green-700" : ""}
                 >
-                  {maintenanceMode ? "Server is DOWN - Turn ON" : "Server is ON - Take DOWN"}
+                  {maintenanceMode ? "Server is DOWN" : "Server is ON"}
                 </Button>
+              </div>
+
+              {/* Block Mode */}
+              <div className="p-4 bg-black rounded-lg border border-gray-800 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-medium text-white flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-red-500" />
+                      Block Screen
+                    </h3>
+                    <p className="text-sm text-gray-500">Show a custom blocking overlay.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowBlockConfig(!showBlockConfig)}
+                      className="border-gray-700 text-gray-400"
+                    >
+                      {showBlockConfig ? "Close" : "Configure"}
+                    </Button>
+                    <Button 
+                      onClick={toggleBlockMode}
+                      variant={blockMode ? "destructive" : "default"}
+                      className={!blockMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                    >
+                      {blockMode ? "ENABLED" : "DISABLED"}
+                    </Button>
+                  </div>
+                </div>
+
+                {showBlockConfig && (
+                  <div className="pt-4 border-t border-gray-800 space-y-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                      <label className="text-xs text-gray-500 uppercase tracking-wider">Block Title</label>
+                      <Input 
+                        placeholder="e.g., Access Restricted" 
+                        value={blockTitle} 
+                        onChange={e => setBlockTitle(e.target.value)}
+                        className="bg-gray-900 border-gray-800 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs text-gray-500 uppercase tracking-wider">Block Message</label>
+                      <textarea 
+                        className="flex min-h-[80px] w-full rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="e.g., We are currently performing scheduled maintenance..." 
+                        value={blockMessage}
+                        onChange={e => setBlockMessage(e.target.value)}
+                      />
+                    </div>
+                    <Button 
+                      onClick={saveBlockSettings} 
+                      disabled={savingBlock}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {savingBlock ? "Saving..." : "Save Block Configuration"}
+                    </Button>
+                    <p className="text-[10px] text-gray-500 text-center italic">
+                      * Changes will reflect on the home page once enabled.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
