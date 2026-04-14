@@ -30,9 +30,9 @@ const AdminDashboard = () => {
   const [featured, setFeatured] = useState<FeaturedEvent[]>([]);
   const [donationSettings, setDonationSettings] = useState<{ id: string; qr_image_url: string; amounts: string[]; upi_id: string }>({ id: "", qr_image_url: "", amounts: ["100","500","1000","5000"], upi_id: "" });
   const [siteSettings, setSiteSettings] = useState<Record<string, { id: string; value: string }>>({});
+  const [donationRequests, setDonationRequests] = useState<any[]>([]);
 
   const loadAll = useCallback(async () => {
-<<<<<<< HEAD
     try {
       const [s, t, e, p, g, f, d, ss, dr] = await Promise.all([
         supabase.from("slider_images").select("*").order("display_order"),
@@ -70,31 +70,6 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   }, [toast]);
-
-=======
-    const [s, t, e, p, g, f, d, ss] = await Promise.all([
-      supabase.from("slider_images").select("*").order("display_order"),
-      supabase.from("team_members").select("*").order("display_order"),
-      supabase.from("upcoming_events").select("*").order("event_date"),
-      supabase.from("plans").select("*"),
-      supabase.from("gallery_images").select("*").order("display_order"),
-      supabase.from("featured_events").select("*").order("event_date"),
-      supabase.from("donation_settings").select("*").limit(1).single(),
-      supabase.from("site_settings").select("*"),
-    ]);
-    setSliders(s.data || []);
-    setTeam(t.data || []);
-    setEvents(e.data || []);
-    setPlans(p.data || []);
-    setGallery(g.data || []);
-    setFeatured(f.data || []);
-    if (d.data) setDonationSettings({ id: d.data.id, qr_image_url: d.data.qr_image_url || "", amounts: d.data.amounts || ["100","500","1000","5000"], upi_id: d.data.upi_id || "" });
-    const settingsMap: Record<string, { id: string; value: string }> = {};
-    ss.data?.forEach((s) => { settingsMap[s.setting_key] = { id: s.id, value: s.setting_value || "" }; });
-    setSiteSettings(settingsMap);
-    setLoading(false);
-  }, []);
->>>>>>> parent of 5ebbe25 (final)
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -360,7 +335,6 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-<<<<<<< HEAD
           {/* DONATION REQUESTS */}
           <TabsContent value="requests">
             <div className="bg-card p-6 rounded-lg border border-border">
@@ -414,10 +388,6 @@ const AdminDashboard = () => {
               </div>
             </div>
           </TabsContent>
-
-
-=======
->>>>>>> parent of 5ebbe25 (final)
           {/* SITE SETTINGS */}
           <TabsContent value="settings">
             <div className="bg-card p-6 rounded-lg border border-border">
